@@ -1,5 +1,5 @@
-import React from 'react';
-
+import React, { ReactNode, ErrorInfo } from 'react'; 
+import * as Sentry from '@sentry/react';
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
@@ -12,11 +12,16 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBounda
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+    // Update state so the next render will show the fallback UI.
+    // Store the error itself in the state.
+    return { hasError: true, error: error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    Sentry.captureException(error, { extra: errorInfo });
+
+    // Optionally, you can also log to the console for debugging purposes
+    console.error("Uncaught error caught by ErrorBoundary:", error, errorInfo);
   }
 
   render() {
@@ -24,11 +29,10 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren, ErrorBounda
       return (
         <div className="p-4 bg-red-100 text-red-700 rounded">
           <h2>Something went wrong.</h2>
-          <p>{this.state.error?.message}</p>
+          <p>{this.state.error ? this.state.error.message : 'An unknown error occurred.'}</p>
         </div>
       );
     }
-
     return this.props.children;
   }
 }
